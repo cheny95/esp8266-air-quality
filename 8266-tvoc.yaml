@@ -1,0 +1,129 @@
+esphome:
+  name: 8266-tvoc
+
+esp8266:
+  board: esp01_1m
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  services:
+    - service: mhz19_calibrate_zero
+      then:
+        - mhz19.calibrate_zero: co2
+
+ota:
+  password: "12345678"
+
+wifi:
+  ssid: undefined
+  password: chan1234
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "8266-tvoc"
+    password: "12345678"
+    
+web_server:
+  port: 80
+
+captive_portal:
+
+#定义i2cpin口
+i2c:
+  sda: 4
+  scl: 5
+  scan: True
+
+#双uart接口在每个前面定义一个id来实现
+uart:
+  - id: pms7003
+    rx_pin: GPIO3
+    baud_rate: 9600
+    
+  - id: mhz19b
+    tx_pin: GPIO13
+    rx_pin: GPIO15
+    baud_rate: 9600
+    
+sensor:
+  - platform: shtcx
+    temperature:
+      name: "Temperature"
+    humidity:
+      name: "Humidity"
+    address: 0x70
+    update_interval: 30s #获取频率
+    
+  - platform: pmsx003
+    type: PMSX003
+    pm_1_0:
+      name: "pm10"
+      filters:
+        - sliding_window_moving_average:
+            window_size: 15
+            send_every: 15
+    pm_2_5:
+      name: "pm25"
+      filters:
+        - sliding_window_moving_average:
+            window_size: 15
+            send_every: 15
+    pm_10_0:
+      name: "pm100"
+      filters:
+        - sliding_window_moving_average:
+            window_size: 15
+            send_every: 15
+    uart_id: pms7003
+
+  - platform: mhz19
+    co2:
+      name: "co2"
+      filters:
+        - sliding_window_moving_average:
+            window_size: 6
+            send_every: 6
+    # temperature:
+    #   name: "MH-Z19B Temperature"
+    #   filters:
+    #     - sliding_window_moving_average:
+    #         window_size: 2
+    #         send_every: 2
+    update_interval: 10s
+    automatic_baseline_calibration: false
+    id: co2
+    uart_id: mhz19b
+
+switch:
+#pms休眠状态开关.
+  - platform: gpio
+    pin: 
+      number: GPIO0
+      inverted: no
+    id: pms_set
+    name: "颗粒物传感器工作开关"
+    
+interval:
+#pms每休眠240秒，工作60秒
+  - interval: 240s
+    then:
+      - switch.turn_on: pms_set
+      - delay: 60s
+      - switch.turn_off: pms_set
+
+#获取pms传感器工作状态，延迟30秒工作，因为传感器前30秒工作时间为预热时间
+binary_sensor:
+  - platform: template
+    name: "颗粒物传感器工作状态"
+    id: pms_awake_and_warm
+    lambda: |-
+      if (id(pms_set).state) {
+        return true;
+      } else {
+        return false;
+      }
+    filters:
+      - delayed_on: 30s
