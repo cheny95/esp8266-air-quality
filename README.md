@@ -1,6 +1,14 @@
 # esp8266-air-quality
 ESP8266空气质量检测DIY-esphome代码参考
 
+#### ESPHOME烧录文件是： 8266-tvoc.yaml
+
+#### 引脚图是
+![20200615211225201](https://user-images.githubusercontent.com/6293952/179972145-a94c0d0e-2584-407a-8a90-a4821bc2c445.png)
+
+#### 其他的是对应元器件的文档
+
+
 ### 接线：
 
 ### MH-Z19B：
